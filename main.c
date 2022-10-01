@@ -86,10 +86,8 @@ int main() {
 
   bool render = false;
   bool jump = false;
-  bool up = false;
   int fim = 0;
   double t = 0;
-  int vel = player.vel;
 
   al_start_timer(timer);
   while (true) {
@@ -108,11 +106,9 @@ int main() {
     if (al_key_down(&kbdstate, ALLEGRO_KEY_ESCAPE))
       fim = 1;
     else if (al_key_down(&kbdstate, ALLEGRO_KEY_SPACE) && (!jump)) {
-      printf("pula\n");
       jump = true;
       player.vel = -10;
     } else if (player.y1 + P_HEIGHT >= HEIGHT - GROUND) { // ground collision
-      printf("chao\n");
       jump = false;
       t = 0;
       player.vel = 0;
