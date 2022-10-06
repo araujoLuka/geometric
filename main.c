@@ -17,6 +17,8 @@
 
 #define GROUND 620
 
+enum OBSTACLES {RECT, SPIKE};
+
 struct vector
 {
   double x, y;
@@ -33,8 +35,19 @@ struct obst
 {
   vec2 p1, p2, p3;
   int type;
+  bool sobe;
 };
 typedef struct obst obst_t;
+
+void make_rect(obst_t *ob, int i)
+{
+  ob[i].p1.x = WIDTH + 500 * i;
+  ob[i].p1.y = GROUND - OB_SIZE;
+  ob[i].p2.x = ob[i].p1.x + OB_SIZE;
+  ob[i].p2.y = ob[i].p1.y + OB_SIZE;
+  ob[i].type = RECT;
+  ob[i].sobe = true;
+}
 
 int main() {
   if (!al_init()) {
@@ -46,6 +59,8 @@ int main() {
     printf("erro ao inicializar teclado\n");
     return 1;
   }
+
+  al_install_mouse();
 
   if (!al_init_image_addon()) {
     printf("erro ao inicializar addon de imagem\n");
@@ -87,6 +102,7 @@ int main() {
   }
 
   ALLEGRO_KEYBOARD_STATE kbdstate;
+  ALLEGRO_MOUSE_STATE mse;
 
   player_t player;
   player.x1 = WIDTH / 2.5;
@@ -97,11 +113,11 @@ int main() {
   player.acel = 0.3; // aceleração da gravidade
 
 
-  obst_t ob;
-  ob.p1.x = WIDTH + 1500;
-  ob.p1.y = GROUND - OB_SIZE;
-  ob.p2.x = ob.p1.x + OB_SIZE;
-  ob.p2.y = ob.p1.y + OB_SIZE;
+  obst_t ob[10];
+  int n=0;
+
+  for (n=0; n < 5; n++)
+    make_rect(ob, n);
 
   al_register_event_source(queue, al_get_timer_event_source(timer));
   ALLEGRO_EVENT event;
@@ -110,7 +126,6 @@ int main() {
   bool jump = true;
   int fim = 0;
   double t = 0;
-  bool sobe = true;
   bool over = false;
 
   srand(time(NULL));
@@ -119,6 +134,7 @@ int main() {
   while (true) {
     al_wait_for_event(queue, &event);
     al_get_keyboard_state(&kbdstate);
+    al_get_mouse_state(&mse);
 
     if (event.type == ALLEGRO_EVENT_TIMER)
       render = true;
@@ -129,31 +145,42 @@ int main() {
     player.y1 += player.vel;
     player.y2 = player.y1 + P_HEIGHT;
 
-    ob.p1.x -= 13;
-    if (ob.p1.x + OB_SIZE < 0)
-      ob.p1.x = WIDTH + rand() % 1000;
-
-    ob.p2.x = ob.p1.x + OB_SIZE;
-
-    if (player.y2 > ob.p1.y && player.vel > 0)
-      if (player.x2 < ob.p1.x)
-        sobe = false;
-
-    if (player.y2 > ob.p1.y)
+    if (event.type == ALLEGRO_EVENT_MOUSE_AXES)
     {
-      if (player.x2 > ob.p1.x && player.x1 < ob.p2.x)
+      player.y1 = event.mouse.y;
+      player.y2 = player.y1 + P_HEIGHT;
+    }
+
+    for (int i=0; i < n; i++)
+    {
+      ob[i].p1.x -= 13;
+      if (ob[i].p1.x + OB_SIZE < 0)
+        ob[i].p1.x = WIDTH + rand() % 1000 + 500;
+
+      ob[i].p2.x = ob[i].p1.x + OB_SIZE;
+
+      if (player.y2 > ob[i].p1.y && player.vel > 0)
       {
-        if (player.vel > 0 && sobe )
+        if (player.x1 < ob[i].p1.x && player.x2 < ob[i].p1.x)
+          ob[i].sobe = false;
+      }
+
+      if (player.y2 > ob[i].p1.y)
+      {
+        if (player.x2 > ob[i].p1.x && player.x1 < ob[i].p2.x)
         {
-          jump = false;
-          t = 0;
-          player.vel = 0;
-          player.y1 = ob.p1.y - P_HEIGHT;
-          player.y2 = player.y1 + P_HEIGHT;
-        }
-        else
-        {
-          over = true;
+          if (player.vel > 0 && ob[i].sobe )
+          {
+            jump = false;
+            t = 0;
+            player.vel = 0;
+            player.y1 = ob[i].p1.y - P_HEIGHT;
+            player.y2 = player.y1 + P_HEIGHT;
+          }
+          else
+          {
+            over = true;
+          }
         }
       }
     }
@@ -161,7 +188,8 @@ int main() {
     if (al_key_down(&kbdstate, ALLEGRO_KEY_ESCAPE))
       fim = 1;
     else if (al_key_down(&kbdstate, ALLEGRO_KEY_SPACE) && (!jump) && player.vel == 0) {
-      sobe = true;
+      for (int i=0; i < n; i++)
+        ob[i].sobe = true;
       jump = true;
       player.vel = -13;
     } else if (player.y1 + P_HEIGHT >= GROUND) { // ground collision
@@ -181,8 +209,9 @@ int main() {
       al_draw_filled_rectangle(player.x1, player.y1, player.x2, player.y2,
                                al_map_rgb(255, 255, 255));
 
-      al_draw_filled_rectangle(ob.p1.x, ob.p1.y, ob.p2.x, ob.p2.y,
-                               al_map_rgb(255, 200, 0));
+      for (int i=0; i < n; i++)
+        al_draw_filled_rectangle(ob[i].p1.x, ob[i].p1.y, ob[i].p2.x, ob[i].p2.y,
+                                al_map_rgb(255, 200, 0));
 
       al_draw_filled_rectangle(0, GROUND, WIDTH, HEIGHT,
                                al_map_rgb(255, 0, 0));
@@ -194,8 +223,11 @@ int main() {
 
     if (over)
     {
-      ob.p1.x = WIDTH + 1000;
-      ob.p2.x = ob.p1.x + OB_SIZE;
+      for (int i=0; i < n; i++)
+      {
+        ob[i].p1.x = WIDTH * 2 + 500 * i;
+        ob[i].p2.x = ob[i].p1.x + OB_SIZE;
+      }
       while (1)
       {
         al_get_keyboard_state(&kbdstate);
