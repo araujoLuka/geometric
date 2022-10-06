@@ -99,9 +99,11 @@ int main() {
 
   obst_t ob;
   ob.p1.x = WIDTH + 1500;
-  ob.p1.y = GROUND - OB_SIZE;
-  ob.p2.x = ob.p1.x + OB_SIZE;
-  ob.p2.y = ob.p1.y + OB_SIZE;
+  ob.p1.y = GROUND;
+  ob.p2.x = WIDTH + 1500 + OB_SIZE/2.0;
+  ob.p2.y = GROUND - OB_SIZE;
+  ob.p3.x = ob.p1.x + OB_SIZE;
+  ob.p3.y = GROUND;
 
   al_register_event_source(queue, al_get_timer_event_source(timer));
   ALLEGRO_EVENT event;
@@ -110,8 +112,8 @@ int main() {
   bool jump = true;
   int fim = 0;
   double t = 0;
-  bool sobe = true;
   bool over = false;
+  double m1, m2, y1, y2;
 
   srand(time(NULL));
 
@@ -126,42 +128,34 @@ int main() {
     player.vel += player.acel * t;
     t += 0.5;
 
+    //move player de acordo com player.vel
     player.y1 += player.vel;
     player.y2 = player.y1 + P_HEIGHT;
 
+    //move objeto e reseta seua posicao
     ob.p1.x -= 13;
     if (ob.p1.x + OB_SIZE < 0)
       ob.p1.x = WIDTH + rand() % 1000;
+    ob.p2.x = ob.p1.x + OB_SIZE/2.0;
+    ob.p3.x = ob.p1.x + OB_SIZE; 
 
-    ob.p2.x = ob.p1.x + OB_SIZE;
+    m1 = (ob.p2.y - ob.p1.y)/(ob.p2.x - ob.p1.x);
+    m2 = (ob.p2.y - ob.p3.y)/(ob.p2.x - ob.p3.x);
 
-    if (player.y2 > ob.p1.y && player.vel > 0)
-      if (player.x2 < ob.p1.x)
-        sobe = false;
+    y1 = (m1*(player.x2 - ob.p1.x)) + ob.p1.y;
+    y2 = (m2*(player.x1 - ob.p3.x)) + ob.p3.y;
 
-    if (player.y2 > ob.p1.y)
+
+    //trata colisao do player com obstaculo
+    if (player.y2 > ob.p2.y)
     {
-      if (player.x2 > ob.p1.x && player.x1 < ob.p2.x)
-      {
-        if (player.vel > 0 && sobe )
-        {
-          jump = false;
-          t = 0;
-          player.vel = 0;
-          player.y1 = ob.p1.y - P_HEIGHT;
-          player.y2 = player.y1 + P_HEIGHT;
-        }
-        else
-        {
-          over = true;
-        }
-      }
+      if (player.y2 > y1 && player.y2 > y2)
+        over = true;
     }
 
     if (al_key_down(&kbdstate, ALLEGRO_KEY_ESCAPE))
       fim = 1;
     else if (al_key_down(&kbdstate, ALLEGRO_KEY_SPACE) && (!jump) && player.vel == 0) {
-      sobe = true;
       jump = true;
       player.vel = -13;
     } else if (player.y1 + P_HEIGHT >= GROUND) { // ground collision
@@ -179,10 +173,10 @@ int main() {
       al_clear_to_color(al_map_rgb(0, 0, 0));
 
       al_draw_filled_rectangle(player.x1, player.y1, player.x2, player.y2,
-                               al_map_rgb(255, 255, 255));
-
-      al_draw_filled_rectangle(ob.p1.x, ob.p1.y, ob.p2.x, ob.p2.y,
                                al_map_rgb(255, 200, 0));
+
+      al_draw_filled_triangle(ob.p1.x,ob.p1.y,ob.p2.x, ob.p2.y, ob.p3.x, ob.p3.y,
+                               al_map_rgb(255, 0, 0));
 
       al_draw_filled_rectangle(0, GROUND, WIDTH, HEIGHT,
                                al_map_rgb(255, 0, 0));
