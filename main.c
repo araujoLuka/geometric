@@ -39,10 +39,19 @@ struct obst
 };
 typedef struct obst obst_t;
 
-void make_rect(obst_t *ob, int i)
+void make_rect(obst_t *ob, int i, double dist)
 {
-  ob[i].p1.x = WIDTH + 500 * i;
+  // int prob;
+  // prob = rand() % 99 + 1;
+
+  ob[i].p1.x = WIDTH + OB_SIZE * i + dist + 5 * i;
+  
   ob[i].p1.y = GROUND - OB_SIZE;
+  // if (prob <= 50)
+  //   ob[i].p1.y -= OB_SIZE + 1;
+  // if (prob <= 20)
+  //   ob[i].p1.y -= OB_SIZE;
+  
   ob[i].p2.x = ob[i].p1.x + OB_SIZE;
   ob[i].p2.y = ob[i].p1.y + OB_SIZE;
   ob[i].type = RECT;
@@ -59,8 +68,6 @@ int main() {
     printf("erro ao inicializar teclado\n");
     return 1;
   }
-
-  al_install_mouse();
 
   if (!al_init_image_addon()) {
     printf("erro ao inicializar addon de imagem\n");
@@ -102,7 +109,6 @@ int main() {
   }
 
   ALLEGRO_KEYBOARD_STATE kbdstate;
-  ALLEGRO_MOUSE_STATE mse;
 
   player_t player;
   player.x1 = WIDTH / 2.5;
@@ -112,12 +118,14 @@ int main() {
   player.vel = 0;
   player.acel = 0.3; // aceleração da gravidade
 
-
   obst_t ob[10];
   int n=0;
 
-  for (n=0; n < 5; n++)
-    make_rect(ob, n);
+  for (n=0; n < 10; n++)
+  {
+    srand(time(NULL) * n);
+    make_rect(ob, n, 0);
+  }
 
   al_register_event_source(queue, al_get_timer_event_source(timer));
   ALLEGRO_EVENT event;
@@ -128,13 +136,10 @@ int main() {
   double t = 0;
   bool over = false;
 
-  srand(time(NULL));
-
   al_start_timer(timer);
   while (true) {
     al_wait_for_event(queue, &event);
     al_get_keyboard_state(&kbdstate);
-    al_get_mouse_state(&mse);
 
     if (event.type == ALLEGRO_EVENT_TIMER)
       render = true;
@@ -145,15 +150,9 @@ int main() {
     player.y1 += player.vel;
     player.y2 = player.y1 + P_HEIGHT;
 
-    if (event.type == ALLEGRO_EVENT_MOUSE_AXES)
-    {
-      player.y1 = event.mouse.y;
-      player.y2 = player.y1 + P_HEIGHT;
-    }
-
     for (int i=0; i < n; i++)
     {
-      ob[i].p1.x -= 13;
+      ob[i].p1.x -= 10;
       if (ob[i].p1.x + OB_SIZE < 0)
         ob[i].p1.x = WIDTH + rand() % 1000 + 500;
 
@@ -165,7 +164,7 @@ int main() {
           ob[i].sobe = false;
       }
 
-      if (player.y2 > ob[i].p1.y)
+      if (player.y2 > ob[i].p1.y && player.y1 < ob[i].p2.y)
       {
         if (player.x2 > ob[i].p1.x && player.x1 < ob[i].p2.x)
         {
@@ -179,7 +178,8 @@ int main() {
           }
           else
           {
-            over = true;
+            if (player.vel != 0 || player.y2 >= GROUND)
+              over = true;
           }
         }
       }
@@ -191,7 +191,7 @@ int main() {
       for (int i=0; i < n; i++)
         ob[i].sobe = true;
       jump = true;
-      player.vel = -13;
+      player.vel = -15;
     } else if (player.y1 + P_HEIGHT >= GROUND) { // ground collision
       jump = false;
       t = 0;
